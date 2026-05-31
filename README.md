@@ -29,3 +29,7 @@ D2 are specified as the radar booster spot (wouldnt specify that zone for anythi
 ## Example
 
 ![Example](https://raw.githubusercontent.com/veber01/cruiserloader/refs/heads/main/CruiserExample.png?raw=true)
+
+## Credits
+
+This project uses LethalCompanyTemplate and ItemDeclutter licensed under MIT License.
