@@ -32,4 +32,4 @@ D2 are specified as the radar booster spot (wouldnt specify that zone for anythi
 
 ## Credits
 
-This project uses LethalCompanyTemplate and ItemDeclutter licensed under MIT License.
+This project uses [LethalCompanyTemplate](https://github.com/LethalCompany/https://github.com/LethalCompany/LethalCompanyTemplate/blob/main/LICENSE) and slices of code of [ItemDeclutter](https://github.com/AndreyMrovol/LethalItemsDeclutter/blob/main/LICENSE) licensed under MIT License.
