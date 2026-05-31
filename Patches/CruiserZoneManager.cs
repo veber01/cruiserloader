@@ -98,6 +98,17 @@ namespace CruiserLoader.Patches
             GrabbableObject[] allItems = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
             int moved = 0;
 
+            Dictionary<string, int> alreadyInCruiser = new Dictionary<string, int>();
+            GrabbableObject[] cruiserItems = cruiser.GetComponentsInChildren<GrabbableObject>();
+            foreach (var cruiserItem in cruiserItems)
+            {
+                if (cruiserItem.itemProperties.isScrap) continue;
+                string name = cruiserItem.itemProperties.itemName;
+                alreadyInCruiser[name] = alreadyInCruiser.GetValueOrDefault(name, 0) + 1;
+            }
+
+
+
             foreach (var item in allItems)
             {
                 if (item.itemProperties.isScrap && !item.itemProperties.itemName.Equals("Kitchen knife") && !item.itemProperties.itemName.Equals("Shotgun")) continue;
@@ -112,8 +123,12 @@ namespace CruiserLoader.Patches
                 if (CruiserLoadPatch.ItemCountConfig.TryGetValue(itemName, out var countEntry))
                     maxCount = countEntry.Value;
 
+                int currentlyInCruiser = alreadyInCruiser.GetValueOrDefault(itemName, 0);
+                int stillNeeded = maxCount - currentlyInCruiser;
+                if (stillNeeded <= 0) continue;
+
                 movedCount.TryGetValue(itemName, out int alreadyMoved);
-                if (alreadyMoved >= maxCount) continue;
+                if (alreadyMoved >= stillNeeded) continue;
 
                 string zoneName = CruiserLoadPatch.ItemZoneConfig[itemName].Value;
                 Vector3 targetLocalPos = CruiserPositions.GetNextZonePosition(zoneName);
