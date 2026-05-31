@@ -13,11 +13,14 @@ Number of items loaded and items to load are fully customizable in the config fi
 
 Only items that are currently inside of the ship are getting loaded. Use `/cload` chat command to load up cruiser.
 
+Any number of items can be loaded up to the maximum that are set in the configs for each item. For each zone, items are loaded in in a 5 offset configuration before wrapping back and stacking them.
+
 ## Configuration
 
 !!!None of the zones are predefined by default!!!
 
 Config file lives in /config/CruiserLoader/Items.cfg
+
 Item amount to load and their zones are configurable in the configs.
 
 Zone names are specified on the image below.
