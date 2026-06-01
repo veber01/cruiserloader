@@ -11,7 +11,7 @@ Currently only "supports" Dine playstyle in which you load the back of the cruis
 
 Number of items loaded and items to load are fully customizable in the config file.
 
-Only items that are currently inside of the ship are getting loaded. Use `/cload` chat command to load up cruiser.
+Only items that are currently inside of the ship are getting loaded. Use `.cload` chat command to load up cruiser. Use `.cload <itemname> <count>` to load only one type and amount of that item.
 
 Any number of items can be loaded up to the maximum that are set in the configs for each item. For each zone, items are loaded in in a 5 offset configuration before wrapping back and stacking them.
 
