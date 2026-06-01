@@ -35,22 +35,38 @@ namespace CruiserLoader.Patches
         {
             List<Item> allItemsList = StartOfRound.Instance.allItemsList.itemsList;
 
+            Dictionary<string, string> defaultZones = new Dictionary<string, string>
+    {
+        { "Radar-booster",   "D2" },
+        { "Kitchen knife",   "F2" },
+        { "Shovel",          "A2" },
+        { "Shotgun",         "A3" },
+        { "Ammo",            "C3" },
+        { "Weed killer",     "D1" },
+        { "Key",             "E2" },
+        { "Extension ladder","C2" },
+        { "Lockpicker",      "G2" },
+        { "TZP-Inhalant",    "F3" },
+    };
+
             foreach (Item item in allItemsList)
             {
                 if (item.isScrap && !item.itemName.Equals("Kitchen knife") && !item.itemName.Equals("Shotgun")) continue;
                 if (item.itemName == "Binoculars" || item.itemName == "box" || item.itemName == "Mapper") continue;
 
+                string defaultZone = defaultZones.GetValueOrDefault(item.itemName, "");
+
                 ItemZoneConfig[item.itemName] = CruiserLoader.ItemZoneConfig.Bind(
                     "Items",
                     item.itemName,
-                    "",
+                    defaultZone,
                     $"Set cruiser zone for {item.itemName}. Leave empty to not move. (e.g. A1, B2, C3)"
                 );
 
                 ItemCountConfig[item.itemName] = CruiserLoader.ItemZoneConfig.Bind(
                     "ItemCounts",
                     item.itemName,
-                    5,
+                    1,
                     $"How many {item.itemName} to move to cruiser."
                 );
             }
@@ -84,7 +100,7 @@ namespace CruiserLoader.Patches
 
     internal static class CruiserZoneManager
     {
-        internal static void MoveItemsToCruiser(VehicleController cruiser)
+        internal static void MoveItemsToCruiser(VehicleController cruiser, string? onlyItem = null, int overrideCount = -1)
         {
             if (StartOfRound.Instance == null) return;
             var player = GameNetworkManager.Instance?.localPlayerController;
@@ -93,21 +109,18 @@ namespace CruiserLoader.Patches
 
             CruiserPositions.ResetPlacedCounts();
 
-            Dictionary<string, int> movedCount = new Dictionary<string, int>();
-
-            GrabbableObject[] allItems = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
-            int moved = 0;
-
             Dictionary<string, int> alreadyInCruiser = new Dictionary<string, int>();
             GrabbableObject[] cruiserItems = cruiser.GetComponentsInChildren<GrabbableObject>();
             foreach (var cruiserItem in cruiserItems)
             {
                 if (cruiserItem.itemProperties.isScrap) continue;
-                string name = cruiserItem.itemProperties.itemName;
-                alreadyInCruiser[name] = alreadyInCruiser.GetValueOrDefault(name, 0) + 1;
+                string n = cruiserItem.itemProperties.itemName;
+                alreadyInCruiser[n] = alreadyInCruiser.GetValueOrDefault(n, 0) + 1;
             }
 
-
+            Dictionary<string, int> movedCount = new Dictionary<string, int>();
+            GrabbableObject[] allItems = UnityEngine.Object.FindObjectsOfType<GrabbableObject>();
+            int moved = 0;
 
             foreach (var item in allItems)
             {
@@ -117,11 +130,18 @@ namespace CruiserLoader.Patches
                 if (item.isHeld || item.isPocketed) continue;
 
                 string itemName = item.itemProperties.itemName;
-                if (!CruiserPositions.PositionsDictionary.TryGetValue(itemName, out Vector3 localOffset)) continue;
 
-                int maxCount = 1;
-                if (CruiserLoadPatch.ItemCountConfig.TryGetValue(itemName, out var countEntry))
+                if (onlyItem != null && itemName != onlyItem) continue;
+
+                if (!CruiserPositions.PositionsDictionary.TryGetValue(itemName, out Vector3 _)) continue;
+
+                int maxCount;
+                if (overrideCount > 0)
+                    maxCount = overrideCount;
+                else if (CruiserLoadPatch.ItemCountConfig.TryGetValue(itemName, out var countEntry))
                     maxCount = countEntry.Value;
+                else
+                    maxCount = 1;
 
                 int currentlyInCruiser = alreadyInCruiser.GetValueOrDefault(itemName, 0);
                 int stillNeeded = maxCount - currentlyInCruiser;
@@ -133,8 +153,6 @@ namespace CruiserLoader.Patches
                 string zoneName = CruiserLoadPatch.ItemZoneConfig[itemName].Value;
                 Vector3 targetLocalPos = CruiserPositions.GetNextZonePosition(zoneName);
 
-                NetworkObject cruiserNetObj = cruiser.GetComponent<NetworkObject>();
-
                 item.transform.SetParent(cruiser.transform, worldPositionStays: true);
                 item.transform.localPosition = targetLocalPos;
                 item.fallTime = 1f;
@@ -143,6 +161,7 @@ namespace CruiserLoader.Patches
                 item.targetFloorPosition = targetLocalPos;
                 item.startFallingPosition = targetLocalPos;
 
+                NetworkObject cruiserNetObj = cruiser.GetComponent<NetworkObject>();
                 try
                 {
                     player.PlaceObjectServerRpc(item.NetworkObject, cruiserNetObj, targetLocalPos, false);
