@@ -29,17 +29,25 @@ namespace CruiserLoader.Patches
             CruiserPositions.CreateZones();
             PopulateItemConfig();
             TranslateDictionaries();
-            
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost)
-            {
-                if (CruiserLoaderNetworkHandler.Instance == null)
-                {
-                    CruiserLoader.Log.LogInfo("Creating network handler on host...");
-                    GameObject handlerObj = new GameObject("CruiserLoaderNetworkHandler");
-                    UnityEngine.Object.DontDestroyOnLoad(handlerObj);
-                    handlerObj.AddComponent<CruiserLoaderNetworkHandler>();
-                }
-            }
+            NetworkHelper();
+        }
+
+        [HarmonyPatch("Start")]
+        [HarmonyPrefix]
+        internal static void Prefix()
+        {
+            NetworkHelper();
+        }
+
+        internal static void NetworkHelper()
+        {
+            if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsHost) return;
+            if (CruiserLoaderNetworkHandler.Instance != null) return;
+
+            CruiserLoader.Log.LogInfo("Creating network handler on host...");
+            GameObject handlerObj = new GameObject("CruiserLoaderNetworkHandler");
+            UnityEngine.Object.DontDestroyOnLoad(handlerObj);
+            handlerObj.AddComponent<CruiserLoaderNetworkHandler>();
         }
 
         internal static void PopulateItemConfig()
@@ -181,7 +189,7 @@ namespace CruiserLoader.Patches
                     zoneName = overrideZone;
                 else
                     zoneName = CruiserLoadPatch.ItemZoneConfig[itemName].Value;
-                
+
                 Vector3 targetLocalPos = CruiserPositions.GetNextZonePosition(zoneName);
 
                 item.transform.SetParent(cruiser.transform, worldPositionStays: true);
