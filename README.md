@@ -11,13 +11,15 @@ Currently only "supports" Dine playstyle in which you load the back of the cruis
 
 Number of items loaded and items to load are fully customizable in the config file.
 
-Only items that are currently inside of the ship are getting loaded. Use `.cload` chat command to load up cruiser. Use `.cload <itemname> <count>` to load only one type and amount of that item.
+Only items that are currently inside of the ship are getting loaded. Use `.cload` chat command to load up cruiser. Use `.cload <itemname> <count>` to load only one type and amount of that item. Also without having a specific item configured in the configs, can use `.cload <itemname> <count> <zone>` to move items to specified zones. (example `.cload jet 2 D3` will move 2 jetpacks to D3 with/without having it configured in the configs) 
 
 Any number of items can be loaded up to the maximum that are set in the configs for each item. For each zone, items are loaded in in a 5 offset configuration before wrapping back and stacking them.
 
+Clients that has the mod installed can use the commands if the host itself also has it.
+
 ## Configuration
 
-!!!None of the zones are predefined by default!!!
+!!!Not all of the items have default zoning. Items that have default zones are shown in the picture below with their count aswell!!!
 
 Config file lives in /config/CruiserLoader/Items.cfg
 
