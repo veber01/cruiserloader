@@ -46,7 +46,6 @@ namespace CruiserLoader.Patches
 
             CruiserLoader.Log.LogInfo("Creating network handler on host...");
             GameObject handlerObj = new GameObject("CruiserLoaderNetworkHandler");
-            UnityEngine.Object.DontDestroyOnLoad(handlerObj);
             handlerObj.AddComponent<CruiserLoaderNetworkHandler>();
         }
 
@@ -278,6 +277,21 @@ namespace CruiserLoader.Patches
             else
             {
                 CruiserLoader.Log.LogInfo("[CL] CMM unavailable or not host when enabling handler.");
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (registered && NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null)
+            {
+                NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("CLC");
+                registered = false;
+                CruiserLoader.Log.LogInfo("[CL] Unregistering CLC handler.");
+            }
+
+            if (Instance == this)
+            {
+                Instance = null;
             }
         }
 
