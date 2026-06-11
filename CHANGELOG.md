@@ -1,6 +1,6 @@
 # v0.0.8
 
-- added failsafe to networkhandler to always get initialized after rehosting lobbies.
+- added failsafe to networkhandler to always get initialized after rehosting lobbies or joining lobbies.
 
 # v0.0.7
 
