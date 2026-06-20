@@ -1,3 +1,11 @@
+# v0.1.0
+
+- items are now also can be moved from CUPBOARDS to the cruiser (many who using sort mod that sorts into cupboard were unable to move their stuff)
+- Host Client verifications, msg sync etc. (many unnecessary networking just for looks 0 functionalities :))
+- changed feedback message from chat to displaytip.
+- general cleanups (possibly)
+- Planning to add "ART" loader soon too.
+
 # v0.0.8
 
 - added failsafe to networkhandler to always get initialized after rehosting lobbies or joining lobbies.
