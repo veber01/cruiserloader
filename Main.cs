@@ -21,5 +21,10 @@ namespace CruiserLoader
             new Harmony(MyPluginInfo.PLUGIN_GUID).PatchAll();
             Log.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} loaded successfully!");
         }
+
+        public static void DisplayTip(string title, string msg, bool isWarning = false)
+        {
+            HUDManager.Instance.DisplayTip(title, msg, isWarning, false, "LC_Tip1");
+        }
     }
 }

@@ -2,66 +2,87 @@ using HarmonyLib;
 using GameNetcodeStuff;
 using Unity.Collections;
 using Unity.Netcode;
-using UnityEngine;
-using System.Collections;
 
 namespace CruiserLoader.Patches
 {
     [HarmonyPatch(typeof(HUDManager), nameof(HUDManager.AddTextToChatOnServer))]
     public static class CaptureCommand
     {
+        private const float timeout = 2f;
+
         [HarmonyPrefix]
         public static bool Prefix(string chatMessage)
         {
+            if (!string.IsNullOrEmpty(chatMessage) && chatMessage.StartsWith(".cload"))
+            {
+                CruiserLoader.Log.LogInfo("[CL] Prefix intercepted .cload");
+            }
             if (string.IsNullOrEmpty(chatMessage)) return true;
             if (!chatMessage.StartsWith(".cload")) return true;
 
             PlayerControllerB player = GameNetworkManager.Instance.localPlayerController;
             if (player == null) return false;
 
-            VehicleController cruiser = Object.FindObjectOfType<VehicleController>();
+            VehicleController cruiser = UnityEngine.Object.FindObjectOfType<VehicleController>();
             if (cruiser == null)
             {
-                CruiserLoader.Log.LogInfo("No cruiser found!");
-                HUDManager.Instance.AddTextToChatOnServer("[CL] Buy a cruiser first! BAKA!", -1);
+                CruiserLoader.DisplayTip("CruiserLoader", "Buy a cruiser first!\nBAKA!");
                 return false;
             }
 
             if (!NetworkManager.Singleton.IsHost)
             {
-                if (NetworkManager.Singleton.CustomMessagingManager != null)
+                if (NetworkManager.Singleton.CustomMessagingManager == null)
                 {
-                    using var writer = new FastBufferWriter(512, Allocator.Temp);
-                    writer.WriteValueSafe(chatMessage);
-                    CruiserLoader.Log.LogInfo($"Sending command to host: {chatMessage}");
-                    NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage("CLC", NetworkManager.ServerClientId, writer);
+                    CruiserLoader.DisplayTip("CruiserLoader", "Network issue: CustomMessagingManager unavailable");
+                    return false;
                 }
-                else
+
+                MSGHandlers.RegisterHandlers();
+
+                MSGHandlers.pendingVerification = true;
+                MSGHandlers.verificationReceived = false;
+
+                using var writer = new FastBufferWriter(512, Allocator.Temp);
+                writer.WriteValueSafe(chatMessage);
+                CruiserLoader.Log.LogInfo($"Sending command to host: {chatMessage}");
+                NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage("CLC", NetworkManager.ServerClientId, writer);
+
+                VeriRunner.Instance.WaitThen(timeout, () =>
                 {
-                    HUDManager.Instance.AddTextToChatOnServer("[CL] Host does not have CL installed!", -1);
-                }
+                    if (MSGHandlers.pendingVerification && !MSGHandlers.verificationReceived)
+                    {
+                        CruiserLoader.DisplayTip("CruiserLoader", "Host does not have\nCruiser Loader installed!");
+                        MSGHandlers.pendingVerification = false;
+                    }
+                });
 
                 return false;
             }
 
-            ExecuteCommand(chatMessage, player, cruiser);
+            string resultText = ExecuteCommand(chatMessage, player, cruiser);
+            if (!string.IsNullOrEmpty(resultText))
+            {
+                CruiserLoader.DisplayTip("CruiserLoader", resultText);
+                MSGHandlers.SendMSGToClients(resultText);
+            }
             return false;
         }
 
-        private static void ExecuteCommand(string chatMessage, PlayerControllerB player, VehicleController cruiser)
+        private static string ExecuteCommand(string chatMessage, PlayerControllerB player, VehicleController cruiser)
         {
             string[] parts = chatMessage.Trim().Split(' ');
 
             if (parts.Length == 1)
             {
-                CruiserZoneManager.MoveItemsToCruiser(cruiser);
+                return CruiserZoneManager.MoveItemsToCruiser(cruiser);
             }
             else if (parts.Length == 3)
             {
                 string itemSearch = parts[1].ToLower();
                 if (!int.TryParse(parts[2], out int count) || count <= 0)
-                    return;
-                
+                    return string.Empty;
+
                 string? matchedName = null;
                 foreach (var key in CruiserLoadPatch.ItemZoneConfig.Keys)
                 {
@@ -73,21 +94,20 @@ namespace CruiserLoader.Patches
                 }
 
                 if (matchedName == null)
-                    return;
-                
-                CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count);
+                    return string.Empty;
+
+                return CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count);
             }
             else if (parts.Length == 4)
             {
                 string itemSearch = parts[1].ToLower();
                 if (!int.TryParse(parts[2], out int count) || count <= 0)
-                    return;
+                    return string.Empty;
 
                 string overrideZone = parts[3].ToUpper();
                 if (!CruiserPositions.Zones.ContainsKey(overrideZone))
                 {
-                    HUDManager.Instance.AddTextToChatOnServer($"[CL] Invalid zone: {overrideZone}", -1);
-                    return;
+                    return $"Invalid zone: {overrideZone}";
                 }
 
                 string? matchedName = null;
@@ -101,12 +121,15 @@ namespace CruiserLoader.Patches
                 }
 
                 if (matchedName == null)
-                    return;
-                
-                CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count, overrideZone);
+                    return string.Empty;
+
+                return CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count, overrideZone);
             }
+
+            return string.Empty;
         }
-    }
+
+}
 }
 
 

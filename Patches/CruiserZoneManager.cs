@@ -4,9 +4,9 @@ using System.Linq;
 using BepInEx.Configuration;
 using GameNetcodeStuff;
 using HarmonyLib;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace CruiserLoader.Patches
 {
@@ -129,11 +129,11 @@ namespace CruiserLoader.Patches
 
     internal static class CruiserZoneManager
     {
-        internal static void MoveItemsToCruiser(VehicleController cruiser, string? onlyItem = null, int overrideCount = -1, string? overrideZone = null)
+        internal static string MoveItemsToCruiser(VehicleController cruiser, string? onlyItem = null, int overrideCount = -1, string? overrideZone = null)
         {
-            if (StartOfRound.Instance == null) return;
+            if (StartOfRound.Instance == null) return string.Empty;
             var player = GameNetworkManager.Instance?.localPlayerController;
-            if (player == null) return;
+            if (player == null) return string.Empty;
             bool isHost = NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost;
 
             CruiserPositions.ResetPlacedCounts();
@@ -155,7 +155,7 @@ namespace CruiserLoader.Patches
             {
                 if (item.itemProperties.isScrap && !item.itemProperties.itemName.Equals("Kitchen knife") && !item.itemProperties.itemName.Equals("Shotgun")) continue;
                 if (item.transform.parent == null) continue;
-                if (item.transform.parent.name != "HangarShip") continue;
+                if (item.transform.parent.name != "HangarShip" && item.transform.parent.name != "StorageCloset") continue;
                 if (item.isHeld || item.isPocketed) continue;
 
                 string itemName = item.itemProperties.itemName;
@@ -229,17 +229,15 @@ namespace CruiserLoader.Patches
             {
                 if (overrideZone != null)
                 {
-                    HUDManager.Instance.AddTextToChatOnServer($"[CL] Moved {specificCount} {onlyItem} to {overrideZone}.", -1);
-                    return;
+                    return $"Moved {specificCount} {onlyItem} to {overrideZone}.";
                 }
                 else
                 {
-                    HUDManager.Instance.AddTextToChatOnServer($"[CL] Moved {specificCount} {onlyItem} to cruiser.", -1);
-                    return;
+                    return $"Moved {specificCount} {onlyItem} to cruiser.";
                 }
             }
 
-            HUDManager.Instance.AddTextToChatOnServer($"[CL] Moved {moved} items to cruiser.", -1);
+            return $"Moved {moved} items to cruiser.";
         }
     }
 
@@ -303,8 +301,10 @@ namespace CruiserLoader.Patches
                 return;
             }
 
+            SendVerificationResponse(clientId);
+
             reader.ReadValueSafe(out string command);
-            CruiserLoader.Log.LogInfo($"[CL] Received command from client {clientId}: {command}");
+            CruiserLoader.Log.LogInfo($"[CL] Received from client {clientId}: {command}");
 
             PlayerControllerB player = GameNetworkManager.Instance.localPlayerController;
             if (player == null) return;
@@ -312,26 +312,53 @@ namespace CruiserLoader.Patches
             VehicleController cruiser = UnityEngine.Object.FindObjectOfType<VehicleController>();
             if (cruiser == null)
             {
-                CruiserLoader.Log.LogInfo("No cruiser found!");
+                string result = "Cruiser not found!\nBAKA!";
+                CruiserLoader.DisplayTip("Cruiser Loader", result);
+                SendCommandResult(clientId, result);
                 return;
             }
 
-            ExecuteCommandOnHost(command, player, cruiser);
+            string? resultText = ExecuteCommandOnHost(command, player, cruiser);
+            if (!string.IsNullOrEmpty(resultText))
+            {
+                CruiserLoader.DisplayTip("CruiserLoader", resultText);
+                SendCommandResult(clientId, resultText);
+            }
         }
 
-        private static void ExecuteCommandOnHost(string chatMessage, PlayerControllerB player, VehicleController cruiser)
+        private static void SendVerificationResponse(ulong clientId)
+        {
+            if (NetworkManager.Singleton?.CustomMessagingManager == null) return;
+
+            using var writer = new FastBufferWriter(64, Allocator.Temp);
+            writer.WriteValueSafe("CLVR_OK");
+            NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage("CLVR", clientId, writer);
+            CruiserLoader.Log.LogInfo($"[CL] Verifi sent to ID: {clientId}.");
+        }
+
+        private static void SendCommandResult(ulong clientId, string result)
+        {
+            if (NetworkManager.Singleton?.CustomMessagingManager == null || string.IsNullOrEmpty(result)) return;
+
+            using var writer = new FastBufferWriter(512, Allocator.Temp);
+            writer.WriteValueSafe(result);
+            NetworkManager.Singleton.CustomMessagingManager.SendNamedMessage("CLTR", clientId, writer);
+            CruiserLoader.Log.LogInfo($"[CL] Response sent to ID: {clientId}");
+        }
+
+        private static string? ExecuteCommandOnHost(string chatMessage, PlayerControllerB player, VehicleController cruiser)
         {
             string[] parts = chatMessage.Trim().Split(' ');
 
             if (parts.Length == 1)
             {
-                CruiserZoneManager.MoveItemsToCruiser(cruiser);
+                return CruiserZoneManager.MoveItemsToCruiser(cruiser);
             }
             else if (parts.Length == 3)
             {
                 string itemSearch = parts[1].ToLower();
                 if (!int.TryParse(parts[2], out int count) || count <= 0)
-                    return;
+                    return null;
 
                 string? matchedName = null;
                 foreach (var key in CruiserLoadPatch.ItemZoneConfig.Keys)
@@ -344,21 +371,20 @@ namespace CruiserLoader.Patches
                 }
 
                 if (matchedName == null)
-                    return;
+                    return null;
 
-                CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count);
+                return CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count);
             }
             else if (parts.Length == 4)
             {
                 string itemSearch = parts[1].ToLower();
                 if (!int.TryParse(parts[2], out int count) || count <= 0)
-                    return;
+                    return null;
 
                 string overrideZone = parts[3].ToUpper();
                 if (!CruiserPositions.Zones.ContainsKey(overrideZone))
                 {
-                    HUDManager.Instance.AddTextToChatOnServer($"[CL] Invalid zone: {overrideZone}", -1);
-                    return;
+                    return $"Invalid zone: {overrideZone}";
                 }
 
                 string? matchedName = null;
@@ -372,11 +398,12 @@ namespace CruiserLoader.Patches
                 }
 
                 if (matchedName == null)
-                    return;
+                    return null;
 
-                CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count, overrideZone);
+                return CruiserZoneManager.MoveItemsToCruiser(cruiser, matchedName, count, overrideZone);
             }
+
+            return null;
         }
     }
-
 }
