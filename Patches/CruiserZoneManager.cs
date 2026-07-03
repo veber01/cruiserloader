@@ -32,6 +32,24 @@ namespace CruiserLoader.Patches
             NetworkHelper();
         }
 
+
+
+        [HarmonyPatch("SyncShipUnlockablesClientRpc")]
+        [HarmonyPrefix]
+        internal static void PatchLogicClient()
+        {
+            if (!NetworkManager.Singleton.IsHost)
+            {
+                CruiserPositions.PositionsDictionary.Clear();
+                CruiserPositions.ZoneAllocated.Clear();
+                CruiserPositions.Zones.Clear();
+                CruiserPositions.CreateZones();
+                PopulateItemConfig();
+                TranslateDictionaries();
+                NetworkHelper();
+            }
+        }
+
         [HarmonyPatch("Start")]
         [HarmonyPrefix]
         internal static void Prefix()
@@ -39,12 +57,25 @@ namespace CruiserLoader.Patches
             NetworkHelper();
         }
 
+        [HarmonyPatch(typeof(StartOfRound), "EndOfGame")]
+        [HarmonyPostfix]
+        internal static void AutoRestockPatch()
+        {
+            if (!NetworkManager.Singleton.IsHost || !CruiserLoader.AutoRestockEnabled.Value)
+                return;
+
+            VehicleController cruiser = UnityEngine.Object.FindObjectOfType<VehicleController>();
+            if (cruiser == null)
+                return;
+
+            CruiserZoneManager.MoveItemsToCruiser(cruiser);
+            CruiserLoader.DisplayTip("CruiserLoader", "Auto restock.");
+        }
+
         internal static void NetworkHelper()
         {
             if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsHost) return;
             if (CruiserLoaderNetworkHandler.Instance != null) return;
-
-            CruiserLoader.Log.LogInfo("Creating network handler on host...");
             GameObject handlerObj = new GameObject("CruiserLoaderNetworkHandler");
             handlerObj.AddComponent<CruiserLoaderNetworkHandler>();
         }
@@ -260,21 +291,12 @@ namespace CruiserLoader.Patches
         private void OnEnable()
         {
             if (registered) return;
-            if (NetworkManager.Singleton == null)
-            {
-                CruiserLoader.Log.LogInfo("[CL] NetworkManager not ready.");
-                return;
-            }
+            if (NetworkManager.Singleton == null) return;
 
             if (NetworkManager.Singleton.IsHost && NetworkManager.Singleton.CustomMessagingManager != null)
             {
                 NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("CLC", OnHostCommandReceived);
                 registered = true;
-                CruiserLoader.Log.LogInfo("[CL] Registered CLC handler on host.");
-            }
-            else
-            {
-                CruiserLoader.Log.LogInfo("[CL] CMM unavailable or not host when enabling handler.");
             }
         }
 
@@ -284,7 +306,6 @@ namespace CruiserLoader.Patches
             {
                 NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("CLC");
                 registered = false;
-                CruiserLoader.Log.LogInfo("[CL] Unregistering CLC handler.");
             }
 
             if (Instance == this)
@@ -295,14 +316,8 @@ namespace CruiserLoader.Patches
 
         private static void OnHostCommandReceived(ulong clientId, FastBufferReader reader)
         {
-            if (!NetworkManager.Singleton.IsHost)
-            {
-                CruiserLoader.Log.LogInfo("[CL] Received CLC on non-host, ignoring.");
-                return;
-            }
-
+            if (!NetworkManager.Singleton.IsHost) return;
             SendVerificationResponse(clientId);
-
             reader.ReadValueSafe(out string command);
             CruiserLoader.Log.LogInfo($"[CL] Received from client {clientId}: {command}");
 

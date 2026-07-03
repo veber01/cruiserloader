@@ -1,3 +1,8 @@
+# v0.1.2
+
+- added a new config entry for client use without host having the mod. It does work just fine but i cannot guarantee that it wont ever break, so i just keep it disabled by default (to enable it, go into the config and set "Experimental ClientUse" to true)
+- added an auto-restock feature, can be enabled or disabled using `.cload restock` command or in the configs.
+
 # v0.1.0
 
 - items are now also can be moved from CUPBOARDS to the cruiser (many who using sort mod that sorts into cupboard were unable to move their stuff)

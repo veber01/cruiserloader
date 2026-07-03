@@ -28,7 +28,6 @@ namespace CruiserLoader.Patches
         public static void OnVerificationReceived()
         {
             verificationReceived = true;
-            CruiserLoader.Log.LogInfo("[CL] Host verification OK.");
             pendingVerification = false;
         }
 
@@ -41,7 +40,6 @@ namespace CruiserLoader.Patches
                 NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("CLVR");
                 NetworkManager.Singleton.CustomMessagingManager.UnregisterNamedMessageHandler("CLTR");
                 MSGHandlers.messageHandlersOK = false;
-                CruiserLoader.Log.LogInfo("[CL] Reset things on disconnect.");
             }
         }
 
@@ -53,7 +51,6 @@ namespace CruiserLoader.Patches
             NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("CLVR", OnVerificationResponse);
             NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler("CLTR", OnMSGReceived);
             MSGHandlers.messageHandlersOK = true;
-            CruiserLoader.Log.LogInfo("[CL] Verification handlers OK.");
         }
 
         public static void OnMSGReceived(ulong serverId, FastBufferReader reader)

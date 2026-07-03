@@ -11,7 +11,11 @@ Currently only "supports" Dine playstyle in which you load the back of the cruis
 
 Number of items loaded and items to load are fully customizable in the config file.
 
-Only items that are currently inside of the ship are getting loaded. Use `.cload` chat command to load up cruiser. Use `.cload <itemname> <count>` to load only one type and amount of that item. Also without having a specific item configured in the configs, can use `.cload <itemname> <count> <zone>` to move items to specified zones. (example `.cload jet 2 D3` will move 2 jetpacks to D3 with/without having it configured in the configs) 
+Only items that are currently inside of the ship are getting loaded. Use `.cload` chat command to load up cruiser. Use `.cload <itemname> <count>` to load only one type and amount of that item. Also without having a specific item configured in the configs, can use `.cload <itemname> <count> <zone>` to move items to specified zones. (example `.cload jet 2 D3` will move 2 jetpacks to D3 with/without having it configured in the configs)
+
+Auto-restock feature that refills the cruiser after the end of every day. To enable or disable it use `.cload restock` command.
+
+Clients may execute the commands without the host having it installed. (disabled by default, can be turned on in the configs)
 
 Any number of items can be loaded up to the maximum that are set in the configs for each item. For each zone, items are loaded in in a 5 offset configuration before wrapping back and stacking them.
 

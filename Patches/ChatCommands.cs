@@ -42,6 +42,7 @@ namespace CruiserLoader.Patches
 
                 MSGHandlers.pendingVerification = true;
                 MSGHandlers.verificationReceived = false;
+                
 
                 using var writer = new FastBufferWriter(512, Allocator.Temp);
                 writer.WriteValueSafe(chatMessage);
@@ -54,6 +55,22 @@ namespace CruiserLoader.Patches
                     {
                         CruiserLoader.DisplayTip("CruiserLoader", "Host does not have\nCruiser Loader installed!");
                         MSGHandlers.pendingVerification = false;
+
+                        try
+                        {
+                            if (CruiserLoader.ExperimentalClientUse != null && CruiserLoader.ExperimentalClientUse.Value)
+                            {
+                                string localResult = ExecuteCommand(chatMessage, player, cruiser);
+                                if (!string.IsNullOrEmpty(localResult))
+                                {
+                                    CruiserLoader.DisplayTip("CruiserLoader", localResult);
+                                }
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            CruiserLoader.Log.LogError($"[CL] BRUH1: {ex}");
+                        }
                     }
                 });
 
@@ -76,6 +93,14 @@ namespace CruiserLoader.Patches
             if (parts.Length == 1)
             {
                 return CruiserZoneManager.MoveItemsToCruiser(cruiser);
+            }
+            else if (parts.Length == 2 && parts[1].ToLower() == "restock")
+            {
+                bool enabled = !CruiserLoader.AutoRestockEnabled.Value;
+                CruiserLoader.AutoRestockEnabled.Value = enabled;
+                CruiserLoader.ItemZoneConfig.Save();
+                CruiserLoader.DisplayTip("CruiserLoader", $"AutoRestock {CruiserLoader.AutoRestockEnabled.Value}");
+                return enabled ? "Auto restock enabled." : "Auto restock disabled.";
             }
             else if (parts.Length == 3)
             {
